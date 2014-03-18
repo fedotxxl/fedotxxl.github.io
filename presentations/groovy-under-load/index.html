@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>reveal.js - The HTML Presentation Framework</title>
+
+		<meta name="description" content="A framework for easily creating beautiful presentations using HTML">
+		<meta name="author" content="Hakim El Hattab">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/default.css" id="theme">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+		<script>
+			if( window.location.search.match( /print-pdf/gi ) ) {
+				var link = document.createElement( 'link' );
+				link.rel = 'stylesheet';
+				link.type = 'text/css';
+				link.href = 'css/print/pdf.css';
+				document.getElementsByTagName( 'head' )[0].appendChild( link );
+			}
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+
+        <style type="text/css">
+            code {
+                max-height: none !important;
+            }
+
+            pre {
+                width: 100% !important;
+            }
+        </style>
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Groovy under load</h1>
+				</section>
+
+				<section>
+					<h2>Single server</h2>
+					<ul>
+                        <li>400 heavy rps</li>
+                        <li>1.2k light + heavy rps</li>
+					</ul>
+				</section>
+
+				<!-- Example of nested vertical slides -->
+                <section>
+                    <h2>Groovy-1</h2>
+                    <p>Class lock on any <strike>meta</strike> method call (for Java classes)</p>
+                    <pre><code data-trim class="java">
+String a = getString()
+if (a) {
+    a.hashCode()
+}
+                    </code></pre>
+                </section>
+                <section>
+                    <h2>Groovy-1. Fix.</h2>
+                    <p><a href="http://jira.codehaus.org/browse/GROOVY-5249">GROOVY-5249</a> [12.01.12 - 07.03.14 - Groovy 2.3?]</p>
+                    <pre><code data-trim>
+git clone git@github.com:groovy/groovy-core.git
+cd ./groovy-core
+git checkout tags/GROOVY_2_0_8
+[patch https://github.com/lhotari/groovy-core/compare/GROOVY_2_0_8...GROOVY-5249-backport.patch]
+[update version in ./gradle.properties]
+./gradlew clean dist
+cd ./target/libs
+[deploy jars to maven repository]
+                        </code></pre>
+                    <pre><code data-trim class="java">
+dependencies {
+    compile "org.codehaus.groovy:groovy-all:2.0.8.1.PATCHED" //unofficial
+    //compile "org.codehaus.groovy:groovy-all:2.0.8.2.PATCHED" //official
+}
+                        </code></pre>
+                </section>
+                <section>
+                    <h2>Groovy-2. Fix.</h2>
+						<pre><code data-trim>
+                            GroovySystem.keepJavaMetaClasses = true
+                        </code></pre>
+                </section>
+                <section>
+                    <h2>Grails-1. Fix.</h2>
+                    <p><a href="http://jira.grails.org/browse/GRAILS-9943">GRAILS-9943</a> [Grails 2.3]</p>
+                    <pre><code data-trim class="java">
+// ./grails-app/conf/CodecsFixBootStrap.groovy
+class CodecsFixBootStrap {
+
+    /** logger */
+    private static final Logger LOG = LoggerFactory.getLogger(CodecsFixBootStrap)
+
+    def init = { servletContext ->
+        LOG.info "Adding custom encodeAsHTML metamethods"
+
+        [String, GStringImpl, StringBuffer, StringBuilder, Object].each {
+            it.metaClass.encodeAsHTML << {->
+                HtmlUtils.htmlEscape(delegate.toString())
+            }
+            it.metaClass.encodeAsURL << {->
+                URLEncoder.encode(delegate.toString(), URLCodec.getEncoding())
+            }
+            it.metaClass.decodeURL << {->
+                URLDecoder.decode(delegate.toString(), URLCodec.getEncoding())
+            }
+        }
+    }
+}
+                    </code></pre>
+                </section>
+
+				<section>
+					<h2>Just for fun</h2>
+				</section>
+
+				<section>
+                    <h2>A simple Grails filter...</h2>
+					<pre><code data-trim class="java">
+class TestFilters {
+
+    def filters = {
+        all(controller:'*', action:'*') {
+            before = {
+                def a = new A()
+                def b = a.name
+
+                if (b) {
+                    printB(b)
+                }
+
+                return true
+            }
+        }
+    }
+
+    private printB(String b) {
+        System.out.println("This is b - ${b}")
+    }
+
+}
+                            </code></pre>
+				</section>
+
+				<section>
+					<img src="./img/stacktrace.png">
+				</section>
+
+				<section>
+					<h2>How can we solve these problems?</h2>
+				</section>
+
+				<section>
+					<h2>Welcome Java8</h2>
+					<ol>
+						<li>Lambda</li>
+						<li>Streams</li>
+					</ol>
+				</section>
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+				// Parallax scrolling
+				// parallaxBackgroundImage: 'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg',
+				// parallaxBackgroundSize: '2100px 900px',
+
+				// Optional libraries used to extend on reveal.js
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+					{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
